@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 1998-2014,2016,2019,2022-2023 VMware, Inc. All rights reserved.
+ * Copyright (c) 1998-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -41,7 +42,6 @@
 #include <linux/file.h>
 
 #include "vnetInt.h"
-#include "compat_autoconf.h"
 #include "compat_netdevice.h"
 #include "vmnetInt.h"
 
@@ -82,10 +82,6 @@ static int  VNetNetifSetMAC(struct net_device *dev, void *addr);
 static void VNetNetifSetMulticast(struct net_device *dev);
 static int  VNetNetIfProcRead(char *page, char **start, off_t off,
                               int count, int *eof, void *data);
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)) && \
-    (defined(HAVE_NET_DEVICE_OPS) || defined(HAVE_CHANGE_MTU))
-static int VNetNetifChangeMtu(struct net_device *dev, int new_mtu);
-#endif
 
 
 /*
@@ -115,24 +111,15 @@ VNetNetIfSetup(struct net_device *dev)  // IN:
       .ndo_stop = VNetNetifClose,
       .ndo_get_stats = VNetNetifGetStats,
       .ndo_set_mac_address = VNetNetifSetMAC,
-#if COMPAT_LINUX_VERSION_CHECK_LT(3, 2, 0)
-      .ndo_set_multicast_list = VNetNetifSetMulticast,
-#else
       .ndo_set_rx_mode = VNetNetifSetMulticast,
-#endif
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)
-      .ndo_change_mtu = VNetNetifChangeMtu,
-#endif
    };
 #endif /* HAVE_NET_DEVICE_OPS */
 
    /* Turns on IFF_BROADCAST, IFF_MULTICAST. */
    ether_setup(dev);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
    /* Set the maximum allowed MTU value. */
    dev->max_mtu = VMNET_MAX_MTU;
-#endif
 
 #ifdef HAVE_NET_DEVICE_OPS
    dev->netdev_ops = &vnetNetifOps;
@@ -184,11 +171,7 @@ VNetNetIf_Create(char *devName,  // IN:
    memcpy(deviceName, devName, sizeof deviceName);
    NULL_TERMINATE_STRING(deviceName);
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 18, 0)
    dev = alloc_netdev(sizeof *netIf, deviceName, NET_NAME_USER, VNetNetIfSetup);
-#else
-   dev = alloc_netdev(sizeof *netIf, deviceName, VNetNetIfSetup);
-#endif
    if (!dev) {
       retval = -ENOMEM;
       goto out;
@@ -254,7 +237,7 @@ VNetNetIf_Create(char *devName,  // IN:
 
    memset(&netIf->stats, 0, sizeof netIf->stats);
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0) && !defined(SLE15_SP5_BACKPORTS)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
    memcpy(dev->dev_addr, netIf->port.paddr, sizeof netIf->port.paddr);
 #else
    eth_hw_addr_set(dev, netIf->port.paddr);
@@ -541,7 +524,7 @@ VNetNetifSetMAC(struct net_device *dev, // IN:
       return -EINVAL;
    }
    memcpy(netIf->port.paddr, addr->sa_data, dev->addr_len);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0) && !defined(SLE15_SP5_BACKPORTS)
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5, 15, 0)
    memcpy(dev->dev_addr, netIf->port.paddr, dev->addr_len);
 #else
    eth_hw_addr_set(dev, netIf->port.paddr);
@@ -575,38 +558,6 @@ void
 VNetNetifSetMulticast(struct net_device *dev) // IN: unused
 {
 }
-
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(4, 10, 0)) && \
-    (defined(HAVE_NET_DEVICE_OPS) || defined(HAVE_CHANGE_MTU))
-/*
- *----------------------------------------------------------------------
- *
- * VNetNetifChangeMtu --
- *
- *      Changes the current MTU value of a given vmnet interface.
- *
- * Results:
- *      Returns zero on success, or invalid argument error if an incorrect
- *      MTU size is being set.
- *
- * Side effects:
- *      None.
- *----------------------------------------------------------------------
- */
-
-int
-VNetNetifChangeMtu(struct net_device *dev, // IN/OUT: assigning the mtu member.
-                   int new_mtu)            // IN:     new mtu value.
-{
-   if (new_mtu < VMNET_MIN_MTU || new_mtu > VMNET_MAX_MTU) {
-      return -EINVAL;
-   }
-
-   dev->mtu = new_mtu;
-   return 0;
-}
-#endif
 
 
 /*

@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 2020-2021 VMware, Inc. All rights reserved.
+ * Copyright (c) 2020-2026 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -66,12 +67,24 @@ typedef ALIGNED(8) struct {
 
 
 /*
+ * Write a 64 bit value to an arbitrary address on a shadow stack.
+ *
+ * Shadow stacks must be active and WRSS must be allowed.
+ */
+#define CET_SHADOWSTACK_WRITE(_destAddr, _data)   \
+   asm volatile("wrssq %1, %0"                    \
+                : "=m"(*(uint64*)(_destAddr))     \
+                : "r"(_data)                      \
+                : "memory");
+
+
+/*
  * CET_IBTComputeLegacyByte --
  *   Calculates the bit position in the legacy bitmap for the given LA.
  *   LA [63  ...  48][47 .... 15][14 13 12][11  ...  0]
  *         unused       byteNum    bitNum
  */
-static INLINE void
+static inline void
 CET_IBTComputeLegacyByte(LA la, uint64 *byteNum, uint8 *byteMask)
 {
    const unsigned bitsPerByte = 8;

@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 1998-2014, 2016-2021 VMware, Inc. All rights reserved.
+ * Copyright (c) 1998-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -50,8 +51,9 @@ typedef uint32 Vcpuid;                 // VCPU number
 #define IS_BOOT_VCPUID(vcpuid)  ((vcpuid) == BOOT_VCPU_ID)
 
 #define MAX_VCPUS            2048
-#define MAX_CORES_PER_SOCKET  256
 #define MAX_VCPU_SOCKETS      128
+
+#if defined VM_X86_ANY
 
 /*
  * There are several properties of the VM which change at the 128 VCPU
@@ -60,7 +62,19 @@ typedef uint32 Vcpuid;                 // VCPU number
 #define MAX_SMALL_VM_VCPUS 128
 
 /* Supported limit. */
-#define MAX_SUPPORTED_VCPUS   768
+#define MAX_SUPPORTED_VCPUS   960
+
+#elif defined VM_ARM_64
+
+/*
+ * But there is not yet a concept of monster VM for Arm.
+ */
+#define MAX_SMALL_VM_VCPUS MAX_VCPUS
+
+/* Supported limit. */
+#define MAX_SUPPORTED_VCPUS   504 // PR 3419095
+
+#endif
 
 #if defined __cplusplus
 } // extern "C"

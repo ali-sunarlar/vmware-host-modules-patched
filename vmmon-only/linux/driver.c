@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 1998-2022 VMware, Inc. All rights reserved.
+ * Copyright (c) 1998-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -34,11 +35,12 @@
 
 #include "compat_version.h"
 #include "compat_module.h"
+#include "compat_timer.h"
 
 #include "usercalldefs.h"
 
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3, 10, 0)
-#error Linux kernels before 3.10 are not supported
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0)
+#error Linux kernels before 4.18 are not supported
 #endif
 
 #include <asm/io.h>
@@ -310,13 +312,7 @@ LinuxDriverInit(void)
    Log("Module %s: registered as misc device\n", vmmon_miscdev.name);
 
    HostIF_InitUptime();
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 15, 0) && !defined(timer_setup)
-   init_timer(&tscTimer);
-   tscTimer.function = (void *)LinuxDriverEstimateTSCkHzDeferred;
-   tscTimer.data = (unsigned long)&tscTimer;
-#else
    timer_setup(&tscTimer, LinuxDriverEstimateTSCkHzDeferred, 0);
-#endif
    LinuxDriverInitTSCkHz();
    Vmx86_InitIDList();
 
@@ -345,7 +341,7 @@ LinuxDriverExit(void)
 
    Log("Module %s: unloaded\n", vmmon_miscdev.name);
 
-   timer_shutdown_sync(&tscTimer);
+   timer_delete_sync(&tscTimer);
 
    Vmx86_CleanupHVIOBitmap();
    Task_Terminate();

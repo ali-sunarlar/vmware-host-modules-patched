@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 1998-2023 VMware, Inc. All rights reserved.
+ * Copyright (c) 1998-2026 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -24,7 +25,6 @@
 
 #ifndef _X86MSR_H_
 #define _X86MSR_H_
-#include <asm/msr-index.h>
 #define INCLUDE_ALLOW_USERLEVEL
 #define INCLUDE_ALLOW_VMX
 
@@ -65,23 +65,27 @@ typedef struct MSRReply {
 
 #pragma pack(push, 1)
 typedef struct MSRQuery {
-   uint32 msrNum;           // IN
-   uint32 numLogicalCPUs;   // IN/OUT
-   MSRReply logicalCPUs[0]; // OUT
+   uint32 msrNum;                                     // IN
+   uint32 numLogicalCPUs;                             // IN/OUT
+   MSRReply logicalCPUs[] COUNTED_BY(numLogicalCPUs); // OUT
 } MSRQuery;
 #pragma pack(pop)
 
 #define MSR_TSC               0x00000010
 #define MSR_PLATFORM_ID       0x00000017
 #define MSR_APIC_BASE         0x0000001b
+#define MSR_USER_MSR_CTL      0x0000001c
+#define MSR_MSRLIST_BARRIER   0x0000002f
 #define MSR_SMI_COUNT         0x00000034 // Intel Nehalem Family
 #define MSR_CORE_THREAD_COUNT 0x00000035 // Intel Nehalem Family +
 #define MSR_FEATCTL           0x0000003a
 #define MSR_TSC_ADJUST        0x0000003b
 #define MSR_SPEC_CTRL         0x00000048
 #define MSR_PRED_CMD          0x00000049
+#define MSR_PM_LOGICAL_ID     0x00000054 // Intel GNR and later
 #define MSR_BIOS_UPDT_TRIG    0x00000079
 #define MSR_BIOS_SIGN_ID      0x0000008b
+#define MSR_IA32_SMBASE       0x0000009e
 #define MSR_PERFCTR0          0x000000c1
 #define MSR_PERFCTR1          0x000000c2
 #define MSR_PLATFORM_INFO     0x000000ce // Intel Nehalem Family
@@ -143,6 +147,12 @@ typedef struct MSRQuery {
 #define MSR_TEST_CTRL_SPLIT_LOCK_DETECT           (1ULL << 29)
 #endif
 
+#define MSR_XAPIC_DISABLE_STATUS             0xbd
+#define MSR_XAPIC_DISABLE_STATUS_LEGACY_XAPIC_DIS (1ULL << 0)
+
+#define MSR_CORE_CAPABILITIES                0xcf
+#define MSR_CORE_CAPABILITIES_EXTSVC_ENTITLED     (1ULL << 14) // Intel email
+
 #define IA32_MSR_ARCH_CAPABILITIES           0x10a
 #define MSR_ARCH_CAPABILITIES_RDCL_NO             (1ULL << 0)
 #define MSR_ARCH_CAPABILITIES_IBRS_ALL            (1ULL << 1)
@@ -153,6 +163,7 @@ typedef struct MSRQuery {
 #define MSR_ARCH_CAPABILITIES_IF_PSCHANGE_MC_NO   (1ULL << 6)
 #define MSR_ARCH_CAPABILITIES_TSX_CTRL            (1ULL << 7)
 #define MSR_ARCH_CAPABILITIES_TAA_NO              (1ULL << 8)
+#define MSR_ARCH_CAPABILITIES_MCU_CONTROL         (1ULL << 9)
 #define MSR_ARCH_CAPABILITIES_MISC_PKG_CTRLS      (1ULL << 10)
 #define MSR_ARCH_CAPABILITIES_ENERGY_FILT_CTL     (1ULL << 11)
 #define MSR_ARCH_CAPABILITIES_DOITM               (1ULL << 12)
@@ -164,6 +175,7 @@ typedef struct MSRQuery {
 #define MSR_ARCH_CAPABILITIES_RRSBA               (1ULL << 19)
 #define MSR_ARCH_CAPABILITIES_BHI_NO              (1ULL << 20)
 #define MSR_ARCH_CAPABILITIES_XAPIC_DIS_STATUS    (1ULL << 21)
+#define MSR_ARCH_CAPABILITIES_EXTSVC_ENTITLED     (1ULL << 22)
 #define MSR_ARCH_CAPABILITIES_OVERCLOCKING_STATUS (1ULL << 23)
 #define MSR_ARCH_CAPABILITIES_PBRSB_NO            (1ULL << 24)
 
@@ -196,6 +208,9 @@ typedef struct MSRQuery {
 #ifndef MSR_MISC_FEATURES_ENABLES
 #define MSR_MISC_FEATURES_ENABLES            0x140
 #endif
+
+#define MSR_UARCH_MISC_CTL                   0x1b01
+#define MSR_UARCH_MISC_CTL_DOITM                   (1ULL << 0)
 
 #define MSR_XFD                              0x1c4
 #define MSR_XFD_ERR                          0x1c5
@@ -288,15 +303,6 @@ typedef struct MSRQuery {
 #define MSR_LASTINTTOIP        0x000001de // Intel P6 Family
 #define MSR_LASTBRANCH_TOS_P6  0x000001c9 // Intel P6 Family
 
-#define MSR_LER_FROM_LIP       0x000001d7 // Intel Pentium4 Family
-#define MSR_LER_TO_LIP         0x000001d8 // Intel Pentium4 Family
-#define MSR_LASTBRANCH_TOS_P4  0x000001da // Intel Pentium4 Family
-#define MSR_LASTBRANCH_0       0x000001db // Intel Pentium4 Family
-#define MSR_LASTBRANCH_1       0x000001dc // Intel Pentium4 Family
-#define MSR_LASTBRANCH_2       0x000001dd // Intel Pentium4 Family
-#define MSR_LASTBRANCH_3       0x000001de // Intel Pentium4 Family
-
-#define MSR_LER_INFO           0x000001e0 // with architectural LBR support
 #define MSR_LASTBRANCH_FROM_IP 0x00000680 // From 1st gen Intel Core
 #define MSR_LASTBRANCH_TO_IP   0x000006c0 // From 1st gen Intel Core
 #define MSR_LASTBRANCH_INFO    0x00000dc0 // From 6th gen Intel Core
@@ -308,12 +314,15 @@ typedef struct MSRQuery {
 #define CORE_GEN6_LBR_SIZE   32     // From 6th gen Intel Core
 #define LBR_STACK_SIZE_MAX   32
 
-/* Architectural LBR MSRs */
+/* Intel architectural LBR MSRs */
 #define MSR_ARCH_LBR_CTL     0x000014ce
 #define MSR_ARCH_LBR_DEPTH   0x000014cf
 #define MSR_ARCH_LBR_FROM_IP 0x00001500
 #define MSR_ARCH_LBR_TO_IP   0x00001600
 #define MSR_ARCH_LBR_INFO    0x00001200
+#define MSR_LER_FROM_IP      0x000001dd // also non-arch and AMD LBR
+#define MSR_LER_TO_IP        0x000001de // also non-arch and AMD LBR
+#define MSR_LER_INFO         0x000001e0 // Intel arch LBR only
 
 /* MSR_ARCH_LBR_CTL bits */
 #define MSR_ARCH_LBR_CTL_LBREN         0x000001
@@ -367,6 +376,7 @@ typedef struct MSRQuery {
 #define MSR_HWP_INTERRUPT           0x00000773
 #define MSR_HWP_REQUEST             0x00000774
 #define MSR_HWP_PECI_REQUEST_INFO   0x00000775
+#define MSR_HWP_CTL                 0x00000776
 #define MSR_HWP_STATUS              0x00000777
 
 /* Power Management Enable MSR bits */
@@ -672,6 +682,7 @@ typedef struct MSRQuery {
 /* This ifndef is necessary because this is defined by some kernel headers. */
 #ifndef MSR_K7_HWCR
 #define MSR_K7_HWCR                0xc0010015    // Available on AMD processors
+#define MSR_K7_HWCR_CPBDIS         0x02000000ULL // Disable Core Performance Boost
 #define MSR_K7_HWCR_SSEDIS         0x00008000ULL // Disable SSE bit
 #define MSR_K7_HWCR_MONMWAITUSEREN 0x00000400ULL // Enable MONITOR/MWAIT CPL>0
 #define MSR_K7_HWCR_TLBFFDIS       0x00000040ULL // Disable TLB Flush Filter
@@ -727,13 +738,32 @@ typedef struct MSRQuery {
 #define MSR_VM_CR_SVME_DISABLE     0x0000000000000010ULL
 #define MSR_VM_CR_RESERVED         0xffffffffffffffe0ULL
 
+/* AMD RAPL related MSRs. */
+#define MSR_AMD_RAPL_POWER_UNIT    0xc0010299
+#define MSR_AMD_PKG_ENERGY_STATUS  0xc001029b
+
 /* SEV related MSRs. */
 #define MSR_VMPAGE_FLUSH           0xc001011e
 #define MSR_GHCB_PA                0xc0010130
 #define MSR_SEV_STATUS             0xc0010131
 
+/* SEV feature-enabled bits in MSR_SEV_STATUS. */
+#define MSR_SEV_STATUS_SEV_EN           (1ULL << 0)
+#define MSR_SEV_STATUS_SEV_ES_EN_BIT    1
+#define MSR_SEV_STATUS_SEV_ES_EN        (1ULL << MSR_SEV_STATUS_SEV_ES_EN_BIT)
+#define MSR_SEV_STATUS_SEV_SNP_EN_BIT   2
+#define MSR_SEV_STATUS_SEV_SNP_EN       (1ULL << MSR_SEV_STATUS_SEV_SNP_EN_BIT)
+#define MSR_SEV_STATUS_DBG_SWAP         (1ULL << 7)
+#define MSR_SEV_STATUS_NO_HOST_IBS_EN   (1ULL << 8)
+#define MSR_SEV_STATUS_BTB_ISOLATE_EN   (1ULL << 9)
+#define MSR_SEV_STATUS_VMSA_REG_PROT_EN (1ULL << 16)
+
+/* Fields in MSR_GHCB_PA for the MSR protocol. */
+#define MSR_GHCB_PA_FUNCTION_MASK           0x0000000000000fffULL
+#define MSR_GHCB_PA_DATA_MASK               0xfffffffffffff000ULL
+
 /* Commands identifiers used in the MSR_GHCB_PA MSR protocol. */
-#define MSR_GHCB_PA_FUNCTION_MASK           0xfffULL
+#define MSR_GHCB_PA_VMGEXIT                 0x0
 #define MSR_GHCB_PA_SEVINFO_HV              0x1
 #define MSR_GHCB_PA_SEVINFO_REQ             0x2
 #define MSR_GHCB_PA_AP_JUMP_TABLE           0x3
@@ -747,6 +777,8 @@ typedef struct MSRQuery {
 #define MSR_GHCB_PA_REGISTER_GHCB_GPA_RESP  0x13
 #define MSR_GHCB_PA_SNP_PSC_REQ             0x14
 #define MSR_GHCB_PA_SNP_PSC_RESP            0x15
+#define MSR_GHCB_PA_RUN_VMPL_REQ            0x16
+#define MSR_GHCB_PA_RUN_VMPL_RESP           0x17
 #define MSR_GHCB_PA_FEATURES_REQ            0x80
 #define MSR_GHCB_PA_FEATURES_RESP           0x81
 #define MSR_GHCB_PA_TERMINATE               0x100
@@ -780,8 +812,14 @@ typedef struct MSRQuery {
 /* Field definitions for MSR_GHCB_PA_SNP_PSC_RESP */
 #define MSR_GHCB_PA_SNP_PSC_ERRCODE_SHIFT   32
 
+/* Field definitions for MSR_GHCB_PA_RUN_VMPL_REQ. */
+#define MSR_GHCB_PA_RUN_VMPL_REQ_VMPL       0x000000ff00000000ULL
+
+/* Field definitions for MSR_GHCB_PA_RUN_VMPL_RESP. */
+#define MSR_GHCB_PA_RUN_VMPL_RESP_ERROR     0xffffffff00000000ULL
+
 /* Field definitions for MSR_GHCB_PA_FEATURES_REQ */
-#define MSR_GHCB_PA_FEATURES_SHIFT          12
+#define MSR_GHCB_PA_FEATURES_RESP_FEATURES  0xfffffffffffff000ULL
 
 /* Field definitions for MSR_GHCB_PA_TERMINATE request. */
 #define MSR_GHCB_PA_TERMINATE_ECS_MASK      0xfULL
@@ -806,18 +844,13 @@ typedef struct MSRQuery {
 #define SEV_TERM_FROBOS_DECODE_ERROR     10 /* Instruction decode error. */
 #define SEV_TERM_FROBOS_PSC_FAILED       11 /* Page state change req failed. */
 #define SEV_TERM_FROBOS_NESTED_VC_EXC    12 /* A nested #VC occurred. */
-
-/* SEV feature-enabled bits in MSR_SEV_STATUS. */
-#define MSR_SEV_STATUS_SEV_EN_BIT      0
-#define MSR_SEV_STATUS_SEV_EN          (1ULL << MSR_SEV_STATUS_SEV_EN_BIT)
-#define MSR_SEV_STATUS_SEV_ES_EN_BIT   1
-#define MSR_SEV_STATUS_SEV_ES_EN       (1ULL << MSR_SEV_STATUS_SEV_ES_EN_BIT)
-#define MSR_SEV_STATUS_SEV_SNP_EN_BIT  2
-#define MSR_SEV_STATUS_SEV_SNP_EN      (1ULL << MSR_SEV_STATUS_SEV_SNP_EN_BIT)
+#define SEV_TERM_FROBOS_NO_SVSM          13 /* SVSM services not available. */
+#define SEV_TERM_FROBOS_SVSM_CALL_FAILED 14 /* SVSM call failed. */
 
 /* SEV-SNP (Secure Nested Paging) MSRs. */
 #define MSR_RMP_BASE              0xc0010132 // Address of first byte of RMP
 #define MSR_RMP_END               0xc0010133 // Address of last byte of RMP
+#define MSR_AMD64_RMP_CFG         0xc0010136 // Segmented RMP config
 
 #define MSR_AMD_DE_CFG           0xc0011029  // Decode configuration
 #define MSR_AMD_DE_CFG_BIT1      (1ULL<<1)
@@ -925,8 +958,10 @@ typedef struct MSRQuery {
 #ifndef MSR_TSX_FORCE_ABORT
 /* MSR for forcing RTM abort to recover PMC3 (see PR 2333817) */
 /* See SKZ87 in intel 335901-009 6th-gen-x-series-spec-update.pdf */
-#define MSR_TSX_FORCE_ABORT                      0x0000010f
-#define MSR_TSX_FORCE_ABORT_RTM_BIT_INDEX        0
+#define MSR_TSX_FORCE_ABORT                      0x10f
+#define MSR_TSX_FORCE_ABORT_RTM                       (1ULL << 0)
+#define MSR_TSX_FROCE_ABORT_TSX_CPUID_CLEAR           (1ULL << 1)
+#define MSR_TSX_FORCE_ABORT_SDV_ENABLE_RTM            (1ULL << 2)
 #endif
 
 /*
@@ -1050,11 +1085,7 @@ typedef unsigned char MTRRType;
 /*
  * MISC_FEATURES_ENABLES bits
  */
-#ifdef MSR_MISC_FEATURES_ENABLES_CPUID_FAULT
-#define MSR_MISC_FEATURES_ENABLES_CPUID_FAULTING MSR_MISC_FEATURES_ENABLES_CPUID_FAULT
-#else
 #define MSR_MISC_FEATURES_ENABLES_CPUID_FAULTING 1
-#endif
 
 
 
@@ -1080,6 +1111,57 @@ typedef unsigned char MTRRType;
 #define MSR_PASID_RSVD_MASK              0xffffffff7ff00000ULL
 #define MSR_PASID_VALID_BIT              (1ULL << 31)
 #define MSR_PASID_PASID_MASK             0xfffff
+
+/* FRED MSRs. */
+#define IA32_FRED_CONFIG                 0x1d4
+#define MSR_FRED_CSL_SHIFT               0
+#define MSR_FRED_CSL_MASK                0x3
+#define MSR_FRED_RESERVED1_SHIFT         2
+#define MSR_FRED_RESERVED1_MASK          0x1
+#define MSR_FRED_DEC_SSP_SHIFT           3
+#define MSR_FRED_DEC_SSP_MASK            0x1
+#define MSR_FRED_RESERVED2_SHIFT         4
+#define MSR_FRED_RESERVED2_MASK          0x3
+#define MSR_FRED_SSIZE_SHIFT             6
+#define MSR_FRED_SSIZE_MASK              0x7
+#define MSR_FRED_CSL_SPECIAL_SHIFT       9
+#define MSR_FRED_CSL_SPECIAL_MASK        0x3
+#define MSR_FRED_RESERVED3_SHIFT         11
+#define MSR_FRED_RESERVED3_MASK          0x1
+#define MSR_FRED_ENTRY_LA_SHIFT          12
+#define MSR_FRED_ENTRY_LA_MASK           0xFFFFFFFFFFFFFULL
+
+#define IA32_FRED_RSP0                   0x1cc
+#define IA32_FRED_RSP1                   0x1cd
+#define IA32_FRED_RSP2                   0x1ce
+#define IA32_FRED_RSP3                   0x1cf
+
+#define IA32_FRED_SSP0                   MSR_PL0_SSP
+#define IA32_FRED_SSP1                   0x1d1
+#define IA32_FRED_SSP2                   0x1d2
+#define IA32_FRED_SSP3                   0x1d3
+
+#define IA32_FRED_STKLVLS                0x1d0
+
+/* User MSR Bits. */
+#define USER_MSR_CTL_ENABLE_BIT          (1ULL << 0)
+#define USER_MSR_CTL_ADDR_MASK           0xfffffffffffffULL
+#define USER_MSR_CTL_ADDR_SHIFT          12
+#define USER_MSR_RESERVED                0xffffffffffffc000ULL
+
+/* Protected Processor Identification Number (PPIN) MSRs. */
+#define MSR_INTEL_PPIN_CTL               0x4e
+#define MSR_INTEL_PPIN                   0x4f
+
+#define MSR_AMD_PPIN_CTL                 0xc00102f0
+#define MSR_AMD_PPIN                     0xc00102f1
+
+/*
+ * If this MSR_INTEL_PPIN_CTL or MSR_AMD_PPIN_CTL bit is set,
+ * then it is allowed to read MSR_INTEL_PPIN or MSR_AMD_PPIN.
+ */
+#define PPIN_EN_BIT                      (1ULL << 1)
+#define PPIN_LOCK_BIT                    (1ULL << 0)
 
 static INLINE uint32
 X86MSR_SysCallEIP(uint64 star)
@@ -1125,15 +1207,15 @@ X86MSR_SysRetCS(uint64 star)
 static INLINE uint64
 X86MSR_GetMSR(uint32 cx)
 {
-   uint64 msr;
+   uint32 lower, upper;
    __asm__ __volatile__(
-      "rdmsr; shlq $32, %%rdx; orq %%rdx, %%rax"
-      : "=a" (msr)
+      "rdmsr"
+      : "=a" (lower),
+        "=d" (upper)
       : "c" (cx)
-      : "%rdx"
    );
 
-   return msr;
+   return ((uint64)upper << 32) | lower;
 }
 
 static INLINE void

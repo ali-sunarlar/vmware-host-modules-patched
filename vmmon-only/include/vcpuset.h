@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (c) 2002-2021 VMware, Inc. All rights reserved.
+ * Copyright (c) 2002-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -45,7 +46,7 @@
     defined VMSS2CORE || defined FROBOS || defined DIS16
 #   include <stdio.h>   /* libc snprintf */
 #   define VCS_SNPRINTF
-#elif defined VMM || defined VMKERNEL
+#elif defined VMM || defined GLM || defined VMKERNEL
 #   include "vm_libc.h" /* vmcore snprintf */
 #   define VCS_SNPRINTF
 #endif
@@ -146,7 +147,7 @@ extern VCPUSet  vcpuSetFull;
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_Empty(VCPUSet *vcs)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -165,7 +166,7 @@ VCPUSet_Empty(VCPUSet *vcs)
  *----------------------------------------------------------------------
  */
 
-static INLINE Bool
+static inline Bool
 VCPUSet_IsEmpty(const VCPUSet *vcs)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -186,7 +187,7 @@ VCPUSet_IsEmpty(const VCPUSet *vcs)
  *
  *----------------------------------------------------------------------
  */
-static INLINE const VCPUSet *
+static inline const VCPUSet *
 VCPUSet_Full(void)
 {
    /*
@@ -210,7 +211,7 @@ VCPUSet_Full(void)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_Copy(VCPUSet *dest, const VCPUSet *src)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -229,7 +230,7 @@ VCPUSet_Copy(VCPUSet *dest, const VCPUSet *src)
  *----------------------------------------------------------------------
  */
 
-static INLINE Bool
+static inline Bool
 VCPUSet_Equals(const VCPUSet *vcs1, const VCPUSet *vcs2)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -251,7 +252,7 @@ VCPUSet_Equals(const VCPUSet *vcs1, const VCPUSet *vcs2)
  *----------------------------------------------------------------------
  */
 
-static INLINE Bool
+static inline Bool
 VCPUSet_IsMember(const VCPUSet *vcs, Vcpuid v)
 {
    ASSERT(v < MAX_VCPUS);
@@ -270,7 +271,7 @@ VCPUSet_IsMember(const VCPUSet *vcs, Vcpuid v)
  *----------------------------------------------------------------------
  */
 
-static INLINE Bool
+static inline Bool
 VCPUSet_AtomicIsMember(VCPUSet *vcs, Vcpuid v)
 {
    volatile uint64 *subset = &vcs->subset[VCS_VCPUID_SUBSET_IDX(v)];
@@ -296,7 +297,7 @@ VCPUSet_AtomicIsMember(VCPUSet *vcs, Vcpuid v)
  *----------------------------------------------------------------------
  */
 
-static INLINE Vcpuid
+static inline Vcpuid
 VCPUSet_FindFirst(const VCPUSet *vcs)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -308,7 +309,7 @@ VCPUSet_FindFirst(const VCPUSet *vcs)
    return VCPUID_INVALID;
 }
 
-static INLINE Vcpuid
+static inline Vcpuid
 VCPUSet_FindLast(const VCPUSet *vcs)
 {
    FOR_EACH_SUBSET_IN_SET_COUNTDOWN(idx) {
@@ -344,7 +345,7 @@ VCPUSet_FindLast(const VCPUSet *vcs)
  *----------------------------------------------------------------------
  */
 
-static INLINE Vcpuid
+static inline Vcpuid
 VCPUSet_FindFirstInSubset(const VCPUSet *vcs, uint64 *subset,
                           unsigned *subsetIdx, unsigned maxSubsets)
 {
@@ -375,7 +376,7 @@ VCPUSet_FindFirstInSubset(const VCPUSet *vcs, uint64 *subset,
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_Remove(VCPUSet *vcs, Vcpuid v)
 {
    ASSERT(v < MAX_VCPUS);
@@ -383,7 +384,7 @@ VCPUSet_Remove(VCPUSet *vcs, Vcpuid v)
 }
 
 
-static INLINE void
+static inline void
 VCPUSet_AtomicRemove(VCPUSet *vcs, Vcpuid v)
 {
    volatile uint64 *subset = &vcs->subset[VCS_VCPUID_SUBSET_IDX(v)];
@@ -403,7 +404,7 @@ VCPUSet_AtomicRemove(VCPUSet *vcs, Vcpuid v)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_IncludeSet(VCPUSet *dest, const VCPUSet *src)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -412,7 +413,7 @@ VCPUSet_IncludeSet(VCPUSet *dest, const VCPUSet *src)
 }
 
 
-static INLINE void
+static inline void
 VCPUSet_RemoveSet(VCPUSet *dest, const VCPUSet *src)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -432,7 +433,7 @@ VCPUSet_RemoveSet(VCPUSet *dest, const VCPUSet *src)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_Include(VCPUSet *vcs, Vcpuid v)
 {
    ASSERT(v < MAX_VCPUS);
@@ -440,7 +441,7 @@ VCPUSet_Include(VCPUSet *vcs, Vcpuid v)
 }
 
 
-static INLINE void
+static inline void
 VCPUSet_AtomicInclude(VCPUSet *vcs, Vcpuid v)
 {
    volatile uint64 *subset = &vcs->subset[VCS_VCPUID_SUBSET_IDX(v)];
@@ -460,7 +461,7 @@ VCPUSet_AtomicInclude(VCPUSet *vcs, Vcpuid v)
  *----------------------------------------------------------------------
  */
 
-static INLINE Bool
+static inline Bool
 VCPUSet_AtomicTestInclude(VCPUSet *vcs, Vcpuid v)
 {
    volatile uint64 *subset = &vcs->subset[VCS_VCPUID_SUBSET_IDX(v)];
@@ -480,7 +481,7 @@ VCPUSet_AtomicTestInclude(VCPUSet *vcs, Vcpuid v)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_PopulateRange(VCPUSet *vcs, unsigned firstVCPU,
                           unsigned numVCPUs)
 {
@@ -512,7 +513,7 @@ VCPUSet_PopulateRange(VCPUSet *vcs, unsigned firstVCPU,
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_Populate(VCPUSet *vcs, unsigned numVCPUs)
 {
    VCPUSet_PopulateRange(vcs, 0, numVCPUs);
@@ -529,7 +530,7 @@ VCPUSet_Populate(VCPUSet *vcs, unsigned numVCPUs)
  *----------------------------------------------------------------------
  */
 
-static INLINE uint64
+static inline uint64
 VCPUSet_Subset(const VCPUSet *vcs,
                    unsigned subset)
 {
@@ -548,7 +549,7 @@ VCPUSet_Subset(const VCPUSet *vcs,
  *----------------------------------------------------------------------
  */
 
-static INLINE uint64 *
+static inline uint64 *
 VCPUSet_SubsetPtr(VCPUSet *vcs, unsigned subset)
 {
    ASSERT(subset < VCS_SUBSET_COUNT);
@@ -567,7 +568,7 @@ VCPUSet_SubsetPtr(VCPUSet *vcs, unsigned subset)
  *----------------------------------------------------------------------
  */
 
-static INLINE Bool
+static inline Bool
 VCPUSet_IsSupersetOrEqual(const VCPUSet *vcs1, const VCPUSet *vcs2)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -590,7 +591,7 @@ VCPUSet_IsSupersetOrEqual(const VCPUSet *vcs1, const VCPUSet *vcs2)
  *----------------------------------------------------------------------
  */
 
-static INLINE Bool
+static inline Bool
 VCPUSet_IsSubsetOrEqual(const VCPUSet *vcs1, const VCPUSet *vcs2)
 {
    return VCPUSet_IsSupersetOrEqual(vcs2, vcs1);
@@ -607,7 +608,7 @@ VCPUSet_IsSubsetOrEqual(const VCPUSet *vcs1, const VCPUSet *vcs2)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_MakeSingleton(VCPUSet *vcs, Vcpuid v)
 {
    VCPUSet_Empty(vcs);
@@ -626,7 +627,7 @@ VCPUSet_MakeSingleton(VCPUSet *vcs, Vcpuid v)
  *----------------------------------------------------------------------
  */
 
-static INLINE Vcpuid
+static inline Vcpuid
 VCPUSet_FindSingleton(const VCPUSet *vcs)
 {
    uint64 foundSub = 0;
@@ -658,7 +659,7 @@ VCPUSet_FindSingleton(const VCPUSet *vcs)
  *
  *----------------------------------------------------------------------
  */
-static INLINE Bool
+static inline Bool
 VCPUSet_IsFull(const VCPUSet *vcs)
 {
    return VCPUSet_Equals(vcs, VCPUSet_Full());
@@ -677,7 +678,7 @@ VCPUSet_IsFull(const VCPUSet *vcs)
  *----------------------------------------------------------------------
  */
 
-static INLINE uint64
+static inline uint64
 VCPUSet_AtomicReadWriteSubset(VCPUSet *vcs, uint64 vcpus,
                                   unsigned n)
 {
@@ -695,7 +696,7 @@ VCPUSet_AtomicReadWriteSubset(VCPUSet *vcs, uint64 vcpus,
  *
  *----------------------------------------------------------------------
  */
-static INLINE int
+static inline int
 VCPUSet_Size(const VCPUSet *vcs)
 {
    int n = 0;
@@ -721,7 +722,7 @@ VCPUSet_Size(const VCPUSet *vcs)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_UnionSubset(VCPUSet *vcs, uint64 vcpus, unsigned n)
 {
    ASSERT(n < VCS_SUBSET_COUNT);
@@ -740,7 +741,7 @@ VCPUSet_UnionSubset(VCPUSet *vcs, uint64 vcpus, unsigned n)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_SubtractSubset(VCPUSet *vcs, uint64 vcpus, unsigned n)
 {
    ASSERT(n < VCS_SUBSET_COUNT);
@@ -759,7 +760,7 @@ VCPUSet_SubtractSubset(VCPUSet *vcs, uint64 vcpus, unsigned n)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_AtomicUnionSubset(VCPUSet *vcs, uint64 vcpus, unsigned n)
 {
    uint64 *subsetPtr = &vcs->subset[n];
@@ -779,7 +780,7 @@ VCPUSet_AtomicUnionSubset(VCPUSet *vcs, uint64 vcpus, unsigned n)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_Invert(VCPUSet *vcs)
 {
    VCPUSet temp;
@@ -800,7 +801,7 @@ VCPUSet_Invert(VCPUSet *vcs)
  *----------------------------------------------------------------------
  */
 
-static INLINE void
+static inline void
 VCPUSet_Intersection(VCPUSet *dest, const VCPUSet *src)
 {
    FOR_EACH_SUBSET_IN_SET(idx) {
@@ -823,7 +824,7 @@ VCPUSet_Intersection(VCPUSet *dest, const VCPUSet *src)
  */
 
 #ifdef VCS_SNPRINTF
-static INLINE char *
+static inline char *
 VCPUSet_LogFormat(char *buf, size_t size, const VCPUSet *vcs)
 {
    unsigned offset  = 0;

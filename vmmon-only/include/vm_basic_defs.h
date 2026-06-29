@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 2003-2023 VMware, Inc. All rights reserved.
+ * Copyright (c) 2003-2026 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,7 +47,17 @@
 #ifdef KBUILD_MODNAME
 #  include <linux/stddef.h>
 #elif !defined(VMKERNEL)
+#if defined(__GNUC__) && __GNUC__ >= 15
+#pragma GCC diagnostic push
+// 'unreachable' is defined C23 and is in stddef.h in gcc15.
+#pragma push_macro("unreachable")
+#undef unreachable
+#endif
 #  include <stddef.h>
+#if defined(__GNUC__) && __GNUC__ >= 15
+#pragma pop_macro("unreachable")
+#pragma GCC diagnostic pop
+#endif
 #else
    /*
     * Vmkernel's bogus __FreeBSD__ value causes gcc <stddef.h> to break.
@@ -126,11 +137,19 @@ Max(int a, int b)
 #define ROUNDDOWNBITS(x, bits) ((uintptr_t)(x) & ~MASK(bits))
 #define CEILING(x, y)          (((x) + (y) - 1) / (y))
 
-#if defined VMKERNEL || defined VMKBOOT
+#if !defined CEIL
 # define CEIL(_a, _b)        CEILING(_a, _b)
+#endif
+#if !defined FLOOR
 # define FLOOR(_a, _b)       ((_a)/(_b))
+#endif
+#if !defined ALIGN_DOWN
 # define ALIGN_DOWN(_a, _b)  ROUNDDOWN(_a, _b)
+#endif
+#if !defined(ALIGN_UP)
 # define ALIGN_UP(_a, _b)    ROUNDUP(_a, _b)
+#endif
+#if !defined(IS_ALIGNED)
 # define IS_ALIGNED(_a, _b)  (ALIGN_DOWN(_a, _b) == _a)
 #endif
 
@@ -160,6 +179,8 @@ Max(int a, int b)
 
 /* SIGNEXT64 sign extends a n-bit value to 64-bits. */
 #define SIGNEXT64(val, n)       (((int64)(val) << (64 - (n))) >> (64 - (n)))
+/* SIGNEXT32 sign extends a n-bit value to 32-bits. */
+#define SIGNEXT32(val, n)       (((int32)(val) << (32 - (n))) >> (32 - (n)))
 
 #define DWORD_ALIGN(x)          ((((x) + 3) >> 2) << 2)
 #define QWORD_ALIGN(x)          ((((x) + 7) >> 3) << 3)
@@ -209,32 +230,40 @@ Max(int a, int b)
 #define PAGE_SHIFT_16KB  14
 #define PAGE_SHIFT_64KB  16
 
-#ifndef PAGE_SHIFT // {
+#define PAGE_SIZE_4KB    4096
+#define PAGE_SIZE_16KB   16384
+#define PAGE_SIZE_64KB   65536
+
 #if defined __x86_64__ || defined __i386__
-   #define PAGE_SHIFT    PAGE_SHIFT_4KB
+   #define VMW_PAGE_SHIFT PAGE_SHIFT_4KB
+   #define VMW_PAGE_SIZE  PAGE_SIZE_4KB
 #elif defined __APPLE__
    #if defined VM_ARM_ANY
-      #define PAGE_SHIFT    PAGE_SHIFT_16KB
+      #define VMW_PAGE_SHIFT PAGE_SHIFT_16KB
+      #define VMW_PAGE_SIZE  PAGE_SIZE_16KB
    #else
-      #define PAGE_SHIFT    PAGE_SHIFT_4KB
+      #define VMW_PAGE_SHIFT PAGE_SHIFT_4KB
+      #define VMW_PAGE_SIZE  PAGE_SIZE_4KB
    #endif
 #elif defined VM_ARM_64
-   #define PAGE_SHIFT    PAGE_SHIFT_4KB
+   #define VMW_PAGE_SHIFT PAGE_SHIFT_4KB
+   #define VMW_PAGE_SIZE  PAGE_SIZE_4KB
 #elif defined __arm__
-   #define PAGE_SHIFT    PAGE_SHIFT_4KB
+   #define VMW_PAGE_SHIFT PAGE_SHIFT_4KB
+   #define VMW_PAGE_SIZE  PAGE_SIZE_4KB
 #elif defined __wasm__
-   #define PAGE_SHIFT    PAGE_SHIFT_4KB
+   #define VMW_PAGE_SHIFT PAGE_SHIFT_4KB
+   #define VMW_PAGE_SIZE  PAGE_SIZE_4KB
 #else
-   #error
+   #error Could not determine page size information for this compiler.
 #endif
-#endif // }
 
-#define PAGE_SIZE_4KB    (1 << PAGE_SHIFT_4KB)
-#define PAGE_SIZE_16KB   (1 << PAGE_SHIFT_16KB)
-#define PAGE_SIZE_64KB   (1 << PAGE_SHIFT_64KB)
+#ifndef PAGE_SHIFT
+#define PAGE_SHIFT VMW_PAGE_SHIFT
+#endif
 
 #ifndef PAGE_SIZE
-#define PAGE_SIZE     (1 << PAGE_SHIFT)
+#define PAGE_SIZE     VMW_PAGE_SIZE
 #endif
 
 #define PAGE_MASK_4KB    (PAGE_SIZE_4KB - 1)
@@ -261,12 +290,20 @@ Max(int a, int b)
 #define BYTES_2_PAGES(_nbytes)  ((_nbytes) >> PAGE_SHIFT)
 #endif
 
+#ifndef ROUNDUP_BYTES_2_PAGES
+#define ROUNDUP_BYTES_2_PAGES(_nbytes) VM_PAGES_SPANNED(0, (_nbytes))
+#endif
+
 #ifndef BYTES_2_PAGES_4KB
 #define BYTES_2_PAGES_4KB(_nbytes)  ((_nbytes) >> PAGE_SHIFT_4KB)
 #endif
 
 #ifndef PAGES_2_BYTES
 #define PAGES_2_BYTES(_npages)  (((uint64)(_npages)) << PAGE_SHIFT)
+#endif
+
+#ifndef PAGES_2_BYTES_4KB
+#define PAGES_2_BYTES_4KB(_npages)  (((uint64)(_npages)) << PAGE_SHIFT_4KB)
 #endif
 
 #ifndef VM_PAGE_BASE
@@ -277,6 +314,13 @@ Max(int a, int b)
 #define VM_PAGES_SPANNED(_addr, _size) \
    (BYTES_2_PAGES(PAGE_OFFSET(_addr) + PAGE_OFFSET(_size) + (PAGE_SIZE - 1)) + \
     BYTES_2_PAGES(_size))
+#endif
+
+#ifndef VM_PAGES_SPANNED_4KB
+#define VM_PAGES_SPANNED_4KB(_addr, _size) \
+   (BYTES_2_PAGES_4KB(PAGE_OFFSET_4KB(_addr) + PAGE_OFFSET_4KB(_size) + \
+                      (PAGE_SIZE_4KB - 1)) + \
+    BYTES_2_PAGES_4KB(_size))
 #endif
 
 #ifndef KBYTES_SHIFT
@@ -419,6 +463,16 @@ Max(int a, int b)
 #endif
 #define QWORD(_hi, _lo)   ((((uint64)(_hi)) << 32) | ((uint32)(_lo)))
 
+#ifndef HIDWORD128
+#define HIDWORD128(_qw)    ((uint64)((_qw) >> 64))
+#endif
+#ifndef LODWORD128
+#define LODWORD128(_qw)    ((uint64)(_qw))
+#endif
+#ifndef QWORD128
+#define QWORD128(_hi, _lo) ((((uint128)(_hi)) << 64) | ((uint64)(_lo)))
+#endif
+
 
 /*
  * Deposit a field _src at _pos bits from the right,
@@ -551,18 +605,73 @@ typedef int pid_t;
  * Convenience macros and definitions. Can often be used instead of #ifdef.
  */
 
+#ifdef VMK_HAS_VMM
+#define VMK_HAS_VMM_ONLY(...) __VA_ARGS__
+#else
+#define VMK_HAS_VMM_ONLY(...)
+#endif
+
+#if defined VMM || defined GLM || defined VMK_HAS_VMM
+/* Structure field only used to support the VMM (as opposed to the ULM). */
+#define VMM_GLM_ONLY_FIELD(name) name
+#else
+/*
+ * Structure field only used to support the VMM (as opposed to the ULM).
+ * Until VMK_HAS_VMM is retired, keep this field so the size of the structure
+ * is unchanged (was bug 3354277), but prepend an underscore to the field's
+ * name to verify at compile time that the field is indeed not used.
+ */
+#define VMM_GLM_ONLY_FIELD(name) _##name
+#endif
+
 #undef ARM64_ONLY
+#if defined(_MSC_VER)
+/*
+ * Old MSVC versions (such as MSVC 14.29.30133, used to build Workstation's
+ * offset checker) are notorious to have non-standard __VA_ARGS__ handling.
+ * The current latest Visual Studio 2022 17.10 (MSVC 19.40/_MSC_VER 1940)
+ * has not fixed the defect yet.
+ */
+#if defined(VMX86_DESKTOP) && (_MSC_VER > 1940)
+#pragma message("ERROR: Compiler version: " XSTR(_MSC_VER))
+#pragma message("ERROR: PR 3405101: Is __VA_ARGS__ hack needed for Arm & x86?")
+#endif
 #ifdef VM_ARM_64
-#define ARM64_ONLY(x)    x
+#define ARM64_ONLY(x) x
 #else
 #define ARM64_ONLY(x)
 #endif
+#else
+#ifdef VM_ARM_64
+#define ARM64_ONLY(...)  __VA_ARGS__
+#else
+#define ARM64_ONLY(...)
+#endif
+#endif
 
 #undef X86_ONLY
+#ifdef _MSC_VER
+/*
+ * Old MSVC versions (such as MSVC 14.29.30133, used to build Workstation's
+ * offset checker) are notorious to have non-standard __VA_ARGS__ handling.
+ * The current latest Visual Studio 2022 17.10 (MSVC 19.40/_MSC_VER 1940)
+ * has not fixed the defect yet.
+ */
+#if defined(VMX86_DESKTOP) && (_MSC_VER > 1940)
+#pragma message("ERROR: Compiler version: " XSTR(_MSC_VER))
+#pragma message("ERROR: PR 3405101: Is __VA_ARGS__ hack needed for Arm & x86?")
+#endif
 #ifdef VM_X86_ANY
 #define X86_ONLY(x)      x
 #else
 #define X86_ONLY(x)
+#endif
+#else
+#ifdef VM_X86_ANY
+#define X86_ONLY(...)    __VA_ARGS__
+#else
+#define X86_ONLY(...)
+#endif
 #endif
 
 #undef DEBUG_ONLY
@@ -629,6 +738,12 @@ typedef int pid_t;
 #define vmx86_server 0
 #define SERVER_ONLY(x)
 #define HOSTED_ONLY(x) x
+#endif
+
+#ifdef VMX86_FDM
+#define vmx86_fdm 1
+#else
+#define vmx86_fdm 0
 #endif
 
 #ifdef VMX86_ESXIO
@@ -704,6 +819,12 @@ typedef int pid_t;
 #define VMM_ONLY(x)
 #endif
 
+#ifdef GLM
+#define vmw_glm 1
+#else
+#define vmw_glm 0
+#endif
+
 #ifdef VMX86_VMX
 #define vmx86_vmx 1
 #else
@@ -734,21 +855,27 @@ typedef int pid_t;
 #else
 #define ulm_esx 0
 #endif
+#ifdef ULM_LIN
+#define ulm_lin 1
+#else
+#define ulm_lin 0
+#endif
 #else
 #define vmx86_ulm 0
 #define ulm_mac 0
 #define ulm_win 0
 #define ulm_esx 0
+#define ulm_lin 0
 #define ULM_ONLY(x)
 #endif
 
-#if defined(VMM) || defined(ULM)
+#if defined(VMM) || defined(GLM) || defined(ULM)
 #define MONITOR_ONLY(x) x
 #else
 #define MONITOR_ONLY(x)
 #endif
 
-#if defined(VMM) || defined(VMKERNEL)
+#if defined(VMM) || defined(GLM) || defined(VMKERNEL)
 #define USER_ONLY(x)
 #else
 #define USER_ONLY(x) x
@@ -904,17 +1031,73 @@ typedef int pid_t;
 #define VMW_CLANG_ANALYZER_NORETURN() ((void)0)
 #endif
 
-/* VMW_FALLTHROUGH
+/*
+ * VMW_FALLTHROUGH
  *
- *   Instructs GCC 9 and above to not warn when a case label of a
+ *   Instructs capable compilers to not warn when a case label of a
  *   'switch' statement falls through to the next label.
  *
- *   If not GCC 9 or above, expands to nothing.
+ *   If not a matched compiler, expands to nothing.
  */
-#if __GNUC__ >= 9
-#define VMW_FALLTHROUGH() __attribute__((fallthrough))
+#if defined __cplusplus && __cplusplus >= 201703L
+   #define VMW_FALLTHROUGH() [[fallthrough]]
+#elif (defined(__GNUC__) && (__GNUC__ >= 9)) ||           \
+      (defined(__clang__) && (__clang_major__ >= 13))
+   #define VMW_FALLTHROUGH() __attribute__((fallthrough))
 #else
-#define VMW_FALLTHROUGH()
+   #define VMW_FALLTHROUGH()
+#endif
+
+
+/*
+ * VMW_CLANG_SUPPRESS
+ *
+ *   Instructs clang static analyzer to suppress unwanted warnings related to the code
+ *   block following this macro.
+ */
+#if defined(__clang__) && (__clang_major__ >= 18)
+   #define VMW_CLANG_SUPPRESS [[clang::suppress]]
+#else
+   #define VMW_CLANG_SUPPRESS
+#endif
+
+
+/*
+ * VMW_DECL_MIN_SIZE
+ *
+ *   Defines the minimum size of an array parameter. On capable C compilers,
+ *   this expands to the static keyword introduced in C99. Unsupported in C++.
+ *
+ *   TODO: Update the MSVC check after the following bug gets fixed:
+ *         https://developercommunity.visualstudio.com/t/c1/1475168
+ */
+#if defined(__STDC_VERSION__) && (__STDC_VERSION__ >= 199901L) && \
+    !defined(_MSC_VER)
+   #define VMW_DECL_MIN_SIZE(_sz) static _sz
+#else
+   #define VMW_DECL_MIN_SIZE(_sz)
+#endif
+
+/*
+ * CFI_ADJUST_CFA_OFFSET:
+ *
+ * This is a best-effort attempt to fix the CFI information for inline
+ * assembly functions that modify rsp. Assuming that the current CFI
+ * register is rsp, pushing to the stack adjusts the offset of the CFA from
+ * rsp by 8 bytes.
+ *
+ * However, this may not be true in all cases: despite compiling with
+ * -fomit-frame-pointer, some functions in the kernel still use rbp. A full
+ * fix to this problem is being tracked by VMKC-1186.
+ *
+ * Since this is only a best-effort attempt for now, only emit CFI
+ * directives for kernel code and only if GCC is currently doing so.
+ * Notably, frobos is compiled without `.eh_frame`: see `FROBOS_CC_FLAGS`.
+ */
+#if defined(VMKERNEL) && defined(__GCC_HAVE_DWARF2_CFI_ASM)
+#define CFI_ADJUST_CFA_OFFSET(offset) ".cfi_adjust_cfa_offset " #offset "\n"
+#else
+#define CFI_ADJUST_CFA_OFFSET(_offset)
 #endif
 
 #endif // ifndef _VM_BASIC_DEFS_H_

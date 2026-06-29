@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (c) 2015-2020 VMware, Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -117,14 +118,19 @@
 #ifndef _MON_LOADER
 #define _MON_LOADER
 
+#if defined VMKERNEL && !defined VMK_HAS_VMM
+#error "VMK code should only include this file when the VMK supports the VMM!"
+#endif
+
 #include "vm_basic_types.h"
 #include "vm_pagetable.h"
 #include "vcpuid.h"   /* Vcpuid */
+#ifdef VMX86_SERVER
+#include "overheadmem_defs.h"
+#endif
 
 #if defined VM_X86_64
 #include "x86paging_64.h"
-#elif defined VM_ARM_64
-#include "vmsa.h"
 #endif
 
 #define ML_NAME_MAX 16
@@ -145,24 +151,6 @@
 #define ML_PERM_WRITEABLE(_flags)   (((_flags) & PTE_RW) != 0)
 
 #define ML_PTE_2_PFN(_pte)          LM_PTE_2_PFN(_pte)
-
-#elif defined VM_ARM_64
-
-#define _ML_PERM_COMMON (ARM_PTE_BLOCK_AP(ARM_AP_PL0)   | ARM_PTE_BLOCK_AF | \
-                         ARM_PTE_BLOCK_SH(ARM_SH_OUTER) | ARM_PTE_BLOCK_L3_TYPE)
-#define ARM_PTE_BLOCK_AP_RO ARM_PTE_BLOCK_AP(ARM_AP_RO)
-
-#define ML_PERM_RW   (_ML_PERM_COMMON |                       ARM_PTE_BLOCK_XN)
-#define ML_PERM_RO   (_ML_PERM_COMMON | ARM_PTE_BLOCK_AP_RO | ARM_PTE_BLOCK_XN)
-#define ML_PERM_RX   (_ML_PERM_COMMON | ARM_PTE_BLOCK_AP_RO                   )
-
-#define ML_PERM_TBL   ML_PERM_RW
-#define ML_PERM_MASK (_ML_PERM_COMMON | ARM_PTE_BLOCK_AP_RO | ARM_PTE_BLOCK_XN)
-
-#define ML_PERM_PRESENT(_flags)   (((_flags) & ARM_PTE_VALID) != 0)
-#define ML_PERM_WRITEABLE(_flags) (((_flags) & ARM_PTE_BLOCK_AP_RO) == 0)
-
-#define ML_PTE_2_PFN(_pte)    (((_pte) & ARM_PTE_PFN_MASK) >> PT_PTE_PFN_SHIFT)
 
 #endif
 
@@ -213,7 +201,7 @@ typedef struct {
       uint64 offset; /* offset within the blob, in bytes. */
       uint64 size;   /* size of content, in bytes. */
    } blobSrc;
-   uint64               bspOnly;           /* Process only on BSP. */
+   Bool                 bspOnly;           /* Process only on BSP. */
    uint64               subIndex;          /* Region ID for ML_CONTENT_COPY. */
 } MonLoaderEntry;
 
@@ -244,7 +232,12 @@ typedef struct MonLoaderHeader {
 struct MonLoaderEnvContext;
 
 /* Callout prototypes */
+#ifdef VMX86_SERVER
+MPN  MonLoaderCallout_AllocMPN(struct MonLoaderEnvContext *, Vcpuid,
+                               OvhdMemSource);
+#else
 MPN  MonLoaderCallout_AllocMPN(struct MonLoaderEnvContext *, Vcpuid);
+#endif
 void MonLoaderCallout_CleanUp(struct MonLoaderEnvContext *);
 Bool MonLoaderCallout_CopyFromBlob(struct MonLoaderEnvContext *, uint64,
                                    size_t, MPN, Vcpuid);
@@ -315,7 +308,7 @@ MonLoaderError MonLoader_Process(MonLoaderHeader *header, unsigned numVCPUs,
  *
  *----------------------------------------------------------------------
  */
-static INLINE size_t
+static inline size_t
 MonLoader_GetFixedHeaderSize(void)
 {
    return sizeof(MonLoaderHeader);
@@ -332,7 +325,7 @@ MonLoader_GetFixedHeaderSize(void)
  *
  *----------------------------------------------------------------------
  */
-static INLINE size_t
+static inline size_t
 MonLoader_GetFullHeaderSize(MonLoaderHeader *header)
 {
    return MonLoader_GetFixedHeaderSize() +

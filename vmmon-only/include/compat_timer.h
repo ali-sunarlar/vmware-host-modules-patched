@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 2004 VMware, Inc. All rights reserved.
+ * Copyright (c) 2002-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -16,27 +17,26 @@
  *
  *********************************************************/
 
-#ifndef __COMPAT_KERNEL_H__
-#   define __COMPAT_KERNEL_H__
+#ifndef __COMPAT_TIMER_H__
+#   define __COMPAT_TIMER_H__
 
-#include <asm/unistd.h>
-#include <linux/kernel.h>
+#define compat_del_timer_sync(timer) del_timer_sync(timer)
 
-/*
- * container_of was introduced in 2.5.28 but it's easier to check like this.
- */
-#ifndef container_of
-#define container_of(ptr, type, member) ({			\
-        const typeof( ((type *)0)->member ) *__mptr = (ptr);	\
-        (type *)( (char *)__mptr - offsetof(type,member) );})
+#include <linux/delay.h>
+#define compat_msleep_interruptible(msecs) msleep_interruptible(msecs)
+#define compat_msleep(msecs) msleep(msecs)
+
+#define compat_init_timer_deferrable(timer) init_timer_deferrable(timer)
+
+#define compat_setup_timer(timer, function, data) \
+       setup_timer(timer, function, data)
+
+#if TIMER_DELETE_SYNC_MISSING
+static inline int timer_delete_sync(struct timer_list *timer)
+{
+   return del_timer_sync(timer);
+}
 #endif
 
-/*
- * vsnprintf became available in 2.4.10. For older kernels, just fall back on
- * vsprintf.
- */
-#if LINUX_VERSION_CODE < KERNEL_VERSION(2, 4, 10)
-#define vsnprintf(str, size, fmt, args) vsprintf(str, fmt, args)
-#endif
 
-#endif /* __COMPAT_KERNEL_H__ */
+#endif /* __COMPAT_TIMER_H__ */

@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 2012,2017-2018,2020,2022 VMware, Inc. All rights reserved.
+ * Copyright (c) 2012-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -17,13 +18,23 @@
  *********************************************************/
 
 /*
- * vm_idt_x86.h --
+ * vm_idt.h --
  *
- *	Definitions for IDT use in x86/x86-64 ESX and hosted VMware Products.
+ *      Definitions for IDT use in VMware Products which run VMs on x86_64.
  */
 
-#ifndef _VM_IDT_X86_H_
-#define _VM_IDT_X86_H_
+#ifndef _VM_IDT_H_
+#define _VM_IDT_H_
+
+#include "vm_basic_types.h"
+#include "x86_basic_defs.h"
+#if defined(VMM) || defined(GLM)
+#include "mon_assert.h"
+#else
+#include "vm_assert.h"
+#endif
+#include "x86desc.h"
+#include "segs.h"
 
 #define INCLUDE_ALLOW_USERLEVEL
 #define INCLUDE_ALLOW_MODULE
@@ -55,11 +66,13 @@ extern "C" {
 
 #define IDT_NUM_GATES              0x100
 /*
- * The monitor and the vmkernel use gate stub handlers of a single size in
- * their IDTs.  The only exception is the #PF gate (#14) which is twice as
- * long in the monitor IDT, to copy CR2.
+ * The monitor and the vmkernel use gate stub handlers of a constant size in
+ * their respective gate stubs called by IDT entries.  The only exception is
+ * the #PF gate (#14) which is twice as long in the monitor IDT, to copy CR2.
  */
-#define IDT_STUB_SIZE              16
+#define IDT_VMM_STUB_SIZE              16
+#define IDT_VMK_STUB_SIZE              32
+#define IDT_VMK_STUB_SIZE_BITS          5
 
 #define IST_NONE                    0
 /* IST entries for the monitor. */
@@ -68,12 +81,16 @@ extern "C" {
 #define IST_VMM_MCE                 3
 #define MAX_VMM_IST                 3
 /* IST entries for the vmkernel. */
+#define IST_VMK_CP                  4
 #define IST_VMK_MCE                 5
 #define IST_VMK_DF                  6
 #define IST_VMK_NMI                 7
 
+#ifndef VMKERNEL
+void IDT_Init(void);
+#endif
 
-static INLINE int
+static inline int
 IDT_MonitorISTForVector(int v)
 {
    /*
@@ -89,8 +106,25 @@ IDT_MonitorISTForVector(int v)
    return IST_NONE;
 }
 
+static inline void
+IDT_MakeGate(Gate64 *gate, uint8 *handler, int dpl, int ist)
+{
+   uint64 addr  = (uint64)handler;
+   ASSERT(!gate->present && dpl <= 3);
+   ASSERT(ist <= MAX_VMM_IST);
+   ASSERT_ON_COMPILE(MAX_VMM_IST <= 7);
+   gate->offset_0_15  = addr & 0xffff;
+   gate->offset_16_31 = (addr >> 16) & 0xffff;
+   gate->offset_32_63 = addr >> 32;
+   gate->segment      = SYSTEM_CODE_SELECTOR,
+   gate->ist          = ist;
+   gate->type         = INTER_GATE;
+   gate->DPL          = dpl;
+   gate->present      = 1;
+}
+
 #if defined __cplusplus
 } // extern "C"
 #endif
 
-#endif /* _VM_IDT_X86_H_ */
+#endif /* _VM_IDT_H_ */

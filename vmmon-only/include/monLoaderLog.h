@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (c) 2016-2019 VMware, Inc. All rights reserved.
+ * Copyright (c) 2016-2024 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -44,7 +45,7 @@ do {                                                 \
 } while (0)
 
 #else /* !defined VMKERNEL && !defined VMMON */
-// #error pas geçildi
+#error MonLoader cannot be built as part of this environment
 #endif
 
 #endif /* _MONLOADER_LOG_H_ */

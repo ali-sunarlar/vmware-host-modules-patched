@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 1998-2018, 2022 VMware, Inc. All rights reserved.
+ * Copyright (c) 1998-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -41,7 +42,7 @@
 
 /* Ensure enough space for obj build with GCOV_VMM=1. */
 #if defined(VMX86_SERVER)
-#define VMMBLOB_SIZE_MAX (25 * 1024 * 1024)
+#define VMMBLOB_SIZE_MAX (26 * 1024 * 1024)
 #else
 #define VMMBLOB_SIZE_MAX (25 * 1024 * 1024)
 #endif

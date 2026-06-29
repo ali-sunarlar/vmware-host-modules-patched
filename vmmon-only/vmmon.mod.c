@@ -27,6 +27,7 @@ __used __section("__versions") = {
 	{ 0xcb8b6ec6, "kfree" },
 	{ 0x86693e87, "schedule_hrtimeout_range" },
 	{ 0x5e505530, "kthread_should_stop" },
+	{ 0x2352b148, "timer_delete_sync" },
 	{ 0x02e1dca7, "free_pages" },
 	{ 0x37197a78, "vsnprintf" },
 	{ 0x5723059f, "msleep_interruptible" },
@@ -67,7 +68,6 @@ __used __section("__versions") = {
 	{ 0x5fc55113, "__default_kernel_pte_mask" },
 	{ 0x0e9cab28, "memset" },
 	{ 0x4e804fe8, "misc_register" },
-	{ 0x2352b148, "timer_shutdown_sync" },
 	{ 0x56d7bf45, "kernel_read" },
 	{ 0xd272d446, "__x86_return_thunk" },
 	{ 0x092a35a2, "_copy_to_user" },
@@ -126,6 +126,7 @@ __used __section("__version_ext_crcs") = {
 	0xcb8b6ec6,
 	0x86693e87,
 	0x5e505530,
+	0x2352b148,
 	0x02e1dca7,
 	0x37197a78,
 	0x5723059f,
@@ -166,7 +167,6 @@ __used __section("__version_ext_crcs") = {
 	0x5fc55113,
 	0x0e9cab28,
 	0x4e804fe8,
-	0x2352b148,
 	0x56d7bf45,
 	0xd272d446,
 	0x092a35a2,
@@ -224,6 +224,7 @@ __used __section("__version_ext_names") =
 	"kfree\0"
 	"schedule_hrtimeout_range\0"
 	"kthread_should_stop\0"
+	"timer_delete_sync\0"
 	"free_pages\0"
 	"vsnprintf\0"
 	"msleep_interruptible\0"
@@ -264,7 +265,6 @@ __used __section("__version_ext_names") =
 	"__default_kernel_pte_mask\0"
 	"memset\0"
 	"misc_register\0"
-	"timer_shutdown_sync\0"
 	"kernel_read\0"
 	"__x86_return_thunk\0"
 	"_copy_to_user\0"
@@ -315,4 +315,4 @@ __used __section("__version_ext_names") =
 MODULE_INFO(depends, "");
 
 
-MODULE_INFO(srcversion, "6EA4A44BCD43C52B9CA2ECB");
+MODULE_INFO(srcversion, "D04CBAE67E60F59E1A80F6E");

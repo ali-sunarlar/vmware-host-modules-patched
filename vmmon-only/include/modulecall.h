@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (c) 1998-2022 VMware, Inc. All rights reserved.
+ * Copyright (c) 1998-2025 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -29,6 +30,10 @@
 #define INCLUDE_ALLOW_VMCORE
 #define INCLUDE_ALLOW_VMMON
 #include "includeCheck.h"
+
+#if !defined(VMX86_SERVER) && (defined(VMM) || defined(GLM))
+#include "addrlayout.h"
+#endif
 
 #include "cpu_types.h"
 #include "ptsc.h"
@@ -365,9 +370,7 @@ typedef struct VMCrossPageData {
 #define CROSSPAGE_VERSION_BASE 0xc15 /* increment by 1 */
 #define CROSSPAGE_VERSION    ((CROSSPAGE_VERSION_BASE << 1) + WS_INTR_STRESS)
 
-#if !defined(VMX86_SERVER) && defined(VMM)
-#define CROSS_PAGE             ((VMCrossPageData *) \
-                                VPN_2_VA(CROSS_PAGE_DATA_START))
+#if !defined(VMX86_SERVER) && (defined(VMM) || defined(GLM))
 #define VMM_SWITCH_SHARED_DATA ((VMCrossPageData * const) \
                                 VPN_2_VA(CROSS_PAGE_DATA_START))
 #endif

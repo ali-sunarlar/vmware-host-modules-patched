@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 2018-2023 VMware, Inc. All rights reserved.
+ * Copyright (c) 2018-2024 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -46,8 +47,8 @@
 
 #define PCPU_DATA_SIZE        (32 * CACHELINE_SIZE)
 
-#define VMMON_GDT_SIZE        (sizeof(Descriptor) * NUM_VALID_SEGMENTS)
-#define VMMON_GDT_LIMIT       (VMMON_GDT_SIZE - 1)
+#define GDT_SIZE              (sizeof(Descriptor) * NUM_VALID_SEGMENTS)
+#define GDT_LIMIT             (GDT_SIZE - 1)
 
 /*
  * This is one more than max GDT limit value.

@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 1998,2005-2012,2014-2023 VMware, Inc. All rights reserved.
+ * Copyright (c) 1998-2026 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -35,8 +36,6 @@
 #endif
 #endif
 
-#include <linux/pci_ids.h>
-
 /* LSILogic 53C1030 Parallel SCSI controller
  * LSILogic SAS1068 SAS controller
  */
@@ -56,11 +55,11 @@
  *    VMware HD Audio codec
  *    VMware HD Audio controller
  */
-#ifndef PCI_VENDOR_ID_VMWARE
 #define PCI_VENDOR_ID_VMWARE                    0x15AD
-#endif
-
 #define PCI_DEVICE_ID_VMWARE_SBX                0x0420
+#define PCI_DEVICE_ID_VMWARE_SVGA4_DO           0x0411
+#define PCI_DEVICE_ID_VMWARE_SVGA4_RO           0x0410
+#define PCI_DEVICE_ID_VMWARE_SVGA4_EFI          0x0409
 #define PCI_DEVICE_ID_VMWARE_SVGA4              0x0408
 #define PCI_DEVICE_ID_VMWARE_SVGA_EFI           0x0407
 #define PCI_DEVICE_ID_VMWARE_SVGA3              0x0406
@@ -81,11 +80,7 @@
 #define PCI_DEVICE_ID_VMWARE_1394               0x0780
 #define PCI_DEVICE_ID_VMWARE_BRIDGE             0x0790
 #define PCI_DEVICE_ID_VMWARE_ROOTPORT           0x07A0
-
-#ifndef PCI_DEVICE_ID_VMWARE_VMXNET3
 #define PCI_DEVICE_ID_VMWARE_VMXNET3            0x07B0
-#endif
-
 #define PCI_DEVICE_ID_VMWARE_PVSCSI             0x07C0
 #define PCI_DEVICE_ID_VMWARE_82574              0x07D0
 #define PCI_DEVICE_ID_VMWARE_AHCI               0x07E0
@@ -152,6 +147,11 @@
 #define PCI_VENDOR_ID_ENSONIQ           0x1274
 #define PCI_DEVICE_ID_ENSONIQ_ES1371    0x1371
 
+/*
+ * AMD MI210, MI300, MI325 GPU
+ */
+#define PCI_VENDOR_ID_ATI               0x1002
+
 /* From linux/pci_ids.h:
  *    Intel 82439TX (430 HX North Bridge)
  *    Intel 82371AB (PIIX4 South Bridge)
@@ -199,6 +199,14 @@
 
 #define PCI_DEVICE_ID_INTEL_QAT_C62X         0x37c8
 #define PCI_DEVICE_ID_INTEL_QAT_C62X_VF      0x37c9
+
+/*
+ * Intel/Habana AI accelerators.
+ */
+#define PCI_VENDOR_ID_HABANA              0x1da3
+#define PCI_DEVICE_ID_HABANA_GAUDI2       0x1020
+#define PCI_DEVICE_ID_HABANA_GAUDI3_OAM   0x1060 /* Open Accelerator Module */
+#define PCI_DEVICE_ID_HABANA_GAUDI3_PCIE  0x1063 /* PCIe add-in card */
 
 /*
  * Intel FPGAs

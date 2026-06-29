@@ -1,5 +1,6 @@
 /*********************************************************
- * Copyright (C) 2015,2017 VMware, Inc. All rights reserved.
+ * Copyright (c) 2015-2024 Broadcom. All Rights Reserved.
+ * The term "Broadcom" refers to Broadcom Inc. and/or its subsidiaries.
  *
  * This program is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License as published by the
@@ -19,7 +20,7 @@
 /*
  * bootstrap_vmm.h --
  *
- *    Public VMM bootstrap declarations.
+ *      Public VMM bootstrap declarations.
  */
 
 #ifndef _BOOTSTRAP_VMM_H
@@ -60,6 +61,6 @@ typedef struct BSVMM_HostParams {
    BSVMM_GDTInit    gdtInit;
 } BSVMM_HostParams;
 
-BSVMM_HostParams* BSVMM_Validate(void *buf, uint32 nbytes);
+BSVMM_HostParams *BSVMM_Validate(void *buf, uint32 nbytes);
 
 #endif
