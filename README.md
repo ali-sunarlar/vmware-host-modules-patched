@@ -16,7 +16,7 @@ Special thanks to **Gemini**, who co-authored, debugged, and crafted these compl
 
 ```bash
 # Clone the repository
-git clone [https://github.com/ali-sunarlar/vmware-host-modules-patched.git](https://github.com/ali-sunarlar/vmware-host-modules-patched.git)
+git clone https://github.com/ali-sunarlar/vmware-host-modules-patched.git
 cd vmware-host-modules-patched
 
 # Build with flattened local inclusion flags
